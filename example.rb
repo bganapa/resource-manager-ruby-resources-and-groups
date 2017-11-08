@@ -5,7 +5,7 @@ require 'dotenv'
 
 Dotenv.load!(File.join(__dir__, './.env'))
 
-WEST_US = 'westus'
+LOCATION = 'westus'
 GROUP_NAME = 'azure-sample-group'
 
 # Manage resources and resource groups - create, update and delete a resource group, deploy a solution into a resource
@@ -40,7 +40,7 @@ def run_example
   # Managing resource groups
   #
   resource_group_params = client.model_classes.resource_group.new.tap do |rg|
-    rg.location = WEST_US
+    rg.location = LOCATION
   end
 
   # List Resource Groups
@@ -59,7 +59,7 @@ def run_example
   # Create a Key Vault in the Resource Group
   puts 'Create a Key Vault via a Generic Resource Put'
   key_vault_params = client.model_classes.generic_resource.new.tap do |rg|
-    rg.location = WEST_US
+    rg.location = LOCATION
     rg.properties = {
         sku: { family: 'A', name: 'standard' },
         tenantId: ENV['AZURE_TENANT_ID'],
