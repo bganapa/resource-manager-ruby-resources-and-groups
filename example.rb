@@ -5,8 +5,9 @@ require 'dotenv'
 
 Dotenv.load!(File.join(__dir__, './.env'))
 
-LOCATION = 'westus'
+LOCATION = 'shanghai'
 GROUP_NAME = 'azure-sample-group'
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 
 # Manage resources and resource groups - create, update and delete a resource group, deploy a solution into a resource
 #   group, export an ARM template. Create, read, update and delete a resource
@@ -23,18 +24,23 @@ def run_example
   # Create the Resource Manager Client with an Application (service principal) token provider
   #
   subscription_id = ENV['AZURE_SUBSCRIPTION_ID'] || '11111111-1111-1111-1111-111111111111' # your Azure Subscription Id
+  environment_settings = get_environment_settings('AzureStack')
+
   provider = MsRestAzure::ApplicationTokenProvider.new(
       ENV['AZURE_TENANT_ID'],
       ENV['AZURE_CLIENT_ID'],
-      ENV['AZURE_CLIENT_SECRET'])
-  credentials = MsRest::TokenCredentials.new(provider)
+      ENV['AZURE_CLIENT_SECRET'],
+      environment_settings)
 
+  credentials = MsRest::TokenCredentials.new(provider)
+  
   options = {
       credentials: credentials,
-      subscription_id: subscription_id
+      subscription_id: subscription_id,
+      environment_settings: environment_settings
   }
 
-  client = Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+  client = Azure::Resources::Profiles::V2017_03_09::Mgmt::Client.new(options)
 
   #
   # Managing resource groups
@@ -79,7 +85,8 @@ def run_example
 
   # List Resources within the group
   puts 'List all of the resources within the group'
-  client.resource_groups.list.each{ |resource| print_item(resource) }
+  #client.resource_groups.list.each{ |resource| print_item(resource) }
+  client.resources.list.each{ |resource| print_item(resource)}
 
   # Export the Resource group template
   puts 'Export Resource Group Template'
@@ -113,6 +120,26 @@ def print_properties(props)
   end
   puts "\n\n"
 end
+
+
+def get_environment_settings(name)
+    settings=MsRestAzure::AzureEnvironments::AzureEnvironment.new({
+                                                    :name => 'AzureStack',
+                                                    :portal_url => 'http://go.microsoft.com/fwlink/?LinkId=254433',
+                                                    :management_endpoint_url => 'https://management.core.windows.net',
+                                                    :resource_manager_endpoint_url => 'https://management.shanghai.azurestack.corp.microsoft.com/',
+                                                    :active_directory_endpoint_url => 'https://login.windows.net/',
+                                                    :authentication_endpoint => 'https://login.windows.net/',
+                                                    :token_audience => 'https://management.masselfhost.onmicrosoft.com/08845a35-a6fe-4462-b56f-c00829e32e77',
+                                                    :active_directory_resource_id => 'https://management.masselfhost.onmicrosoft.com/08845a35-a6fe-4462-b56f-c00829e32e77',
+                                                    :active_directory_graph_resource_id => 'https://graph.windows.net/',
+                                                    :storage_endpoint_suffix => '.shanghai.azurestack.corp.microsoft.com',
+                                                    :key_vault_dns_suffix => '.vault.shanghai.azurestack.corp.microsoft.com'
+                                                })
+    settings
+end
+
+
 
 if $0 == __FILE__
   run_example
