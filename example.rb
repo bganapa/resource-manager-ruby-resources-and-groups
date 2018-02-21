@@ -5,8 +5,9 @@ require 'dotenv'
 
 Dotenv.load!(File.join(__dir__, './.env'))
 
-WEST_US = 'westus'
+LOCAL = 'local'
 GROUP_NAME = 'azure-sample-group'
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE 
 
 # Manage resources and resource groups - create, update and delete a resource group, deploy a solution into a resource
 #   group, export an ARM template. Create, read, update and delete a resource
@@ -22,25 +23,33 @@ def run_example
   #
   # Create the Resource Manager Client with an Application (service principal) token provider
   #
-  subscription_id = ENV['AZURE_SUBSCRIPTION_ID'] || '11111111-1111-1111-1111-111111111111' # your Azure Subscription Id
+  subscription_id = ENV['AZURE_SUBSCRIPTION_ID'] || '6dc24c65-b184-43b9-84cf-697fba6639bc'
+  
+  active_directory_settings = get_active_directory_settings()
+
+   # your Azure Subscription Id
   provider = MsRestAzure::ApplicationTokenProvider.new(
       ENV['AZURE_TENANT_ID'],
       ENV['AZURE_CLIENT_ID'],
-      ENV['AZURE_CLIENT_SECRET'])
+      ENV['AZURE_CLIENT_SECRET'],
+      active_directory_settings
+      )
   credentials = MsRest::TokenCredentials.new(provider)
 
   options = {
       credentials: credentials,
-      subscription_id: subscription_id
+      subscription_id: subscription_id,
+      active_directory_settings: active_directory_settings,
+      base_url: 'https://management.local.azurestack.external'
   }
 
-  client = Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+  client = Azure::Resources::Profiles::V2017_03_09::Mgmt::Client.new(options)
 
   #
   # Managing resource groups
   #
   resource_group_params = client.model_classes.resource_group.new.tap do |rg|
-    rg.location = WEST_US
+    rg.location = LOCAL
   end
 
   # List Resource Groups
@@ -59,7 +68,7 @@ def run_example
   # Create a Key Vault in the Resource Group
   puts 'Create a Key Vault via a Generic Resource Put'
   key_vault_params = client.model_classes.generic_resource.new.tap do |rg|
-    rg.location = WEST_US
+    rg.location = LOCAL
     rg.properties = {
         sku: { family: 'A', name: 'standard' },
         tenantId: ENV['AZURE_TENANT_ID'],
@@ -112,6 +121,13 @@ def print_properties(props)
     end
   end
   puts "\n\n"
+end
+
+def get_active_directory_settings()
+  settings = MsRestAzure::ActiveDirectoryServiceSettings.new
+  settings.authentication_endpoint = 'https://login.windows.net/'
+  settings.token_audience = 'https://management.stacksidd.onmicrosoft.com/0dd47ed8-c5f7-4bfa-a851-8ef41f3e832e'
+  settings
 end
 
 if $0 == __FILE__
